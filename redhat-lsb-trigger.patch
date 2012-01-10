@@ -1,0 +1,114 @@
+--- redhat_lsb_trigger.c.jj	2008-04-16 19:50:14.000000000 +0200
++++ redhat_lsb_trigger.c	2009-10-26 19:51:12.886058784 +0100
+@@ -423,10 +423,76 @@ is_ia64 (void)
+ #define is_ia64() 0
+ #endif
+ 
++char *
++strtok (char *p, const char *delim)
++{
++  static char *olds;
++  const char *d;
++  char *token;
++  if (p == NULL)
++    p = olds;
++  while (*p)
++    {
++      for (d = delim; *d; d++)
++	if (*p == *d)
++	  break;
++      if (!*d)
++	break;
++      p++;
++    }
++  if (!*p)
++    {
++      olds = p;
++      return NULL;
++    }
++  token = p;
++  while (*p)
++    {
++      for (d = delim; *d; d++)
++	if (*p == *d)
++	  break;
++      if (*d)
++	break;
++      p++;
++    }
++  if (!*p)
++    olds = p;
++  else
++    {
++      *p = '\0';
++      olds = p + 1;
++    }
++  return token;
++}
++
++size_t
++strlen (const char *s)
++{
++  const char *p;
++  for (p = s; *p; ++p);
++  return p - s;
++}
++
++void *
++mempcpy (void *dst, const void *src, size_t n)
++{
++  char *d = dst;
++  const char *s = src;
++  while (n--)
++    *d++ = *s++;
++  return d;
++}
++
++char *
++strcpy (char *dst, const char *src)
++{
++  char *ret = dst;
++  while ((*dst++ = *src++) != '\0');
++  return ret;
++}
++
+ int main (int argc, char **argv)
+ {
+-/* redhat_lsb_trigger.c:428: warning: unused variable 'ret' */
+-/*  long ret; */ 
+   INTERNAL_SYSCALL_DECL (err);
+   char lsbsover[] = LSBSOVER;
+   char *LSBVER, *p = lsbsover;
+@@ -455,11 +521,18 @@ void __libc_csu_fini (void) { }
+ pid_t __fork (void) { return -1; }
+ char thr_buf[65536];
+ 
++void
++__attribute__ ((noreturn))
++__stack_chk_fail (void)
++{
++  INTERNAL_SYSCALL_DECL (err);
++  while (1)
++    INTERNAL_SYSCALL (exit, err, 1, 1);
++}
++
+ #ifndef __powerpc__
+ 
+-/* /usr/lib/gcc/ppc64-redhat-linux/4.1.2/../../../../lib64/libc.a(libc-start.o): In function `__libc_start_main':
+- *  * (.opd+0x10): multiple definition of `__libc_start_main'  */
+-int ___libc_start_main (int (*main) (int argc, char **argv),
++int __libc_start_main (int (*main) (int argc, char **argv),
+                        int argc, char **argv,
+ 		       void (*init) (void), void (*fini) (void),
+ 		       void (*rtld_fini) (void), void * stack_end)
+@@ -472,9 +545,7 @@ struct startup_info
+   void (*fini) (void);
+ };
+ 
+-/* /usr/lib/gcc/ppc64-redhat-linux/4.1.2/../../../../lib64/libc.a(libc-start.o): In function `__libc_start_main':
+- * (.opd+0x10): multiple definition of `__libc_start_main'  */
+-int ___libc_start_main (int argc, char **argv, char **ev,
++int __libc_start_main (int argc, char **argv, char **ev,
+ 		       void *auxvec, void (*rtld_fini) (void),
+ 		       struct startup_info *stinfo,
+ 		       char **stack_on_entry)
